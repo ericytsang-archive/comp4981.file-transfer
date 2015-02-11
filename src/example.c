@@ -53,15 +53,16 @@ int main (int argc , char** argv)
     key_t mkey;
     int msq_id;
 
+    /* verify input */
     if (argc != 2)
     {
-        fprintf(stderr, "Usage: showmsg keyval\n");
+        printf("Usage: showmsg keyval\n");
         return 1;
     }
 
     /* Get message queue identifier */
     mkey = (key_t) atoi(argv[1]);
-    if ((msq_id = msgget (mkey, MSG_FLGS)) < 0)
+    if ((msq_id = msgget(mkey, MSG_FLGS)) < 0)
     {
         perror("msgget failed!");
         return 2;
@@ -148,7 +149,7 @@ int parent(int msq_id)
     msgsnd(msq_id, &msg, sizeof(Message), 1);
     sleep(1);
 
-    /* Remove he message queue */
+    /* Remove the message queue */
     if (msgctl (msq_id, IPC_RMID, 0) < 0)
     {
         perror ("msgctl (remove queue) failed!");

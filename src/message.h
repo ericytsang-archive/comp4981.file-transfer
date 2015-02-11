@@ -5,8 +5,8 @@ typedef struct
     void* text;
 } Message;
 
-ConnectMsg;
+// ConnectMsg;
 
-AcceptMsg
+// AcceptMsg
 
-SessionMsg
+// SessionMsg
