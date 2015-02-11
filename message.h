@@ -1,8 +1,10 @@
+
 typedef struct
 {
     long msgType;
-    char* text;
-}
+    void* text;
+} Message;
+
 ConnectMsg;
 
 AcceptMsg

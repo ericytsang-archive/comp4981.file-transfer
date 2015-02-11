@@ -1,4 +1,3 @@
-/* showmsg.c: Show message queue details */
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -6,47 +5,139 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
+
 
 #define CHILD_PID 0
+#define MSG_FLGS 0644 | IPC_CREAT
 
-/* Structure definitions */
-typedef struct
+/* structure definitions */
+struct Message
 {
     long msgType;
     char* text;
-}
-Message;
+};
 
+typedef struct Message Message;
 
-/* Function prototypes */
-void mqstat_print (key_t mkey, int mqid, struct msqid_ds *mstat);
+/* function prototypes */
 int child(int msq_id);
+int parent(int msq_id);
 
-int main (int argc , char *argv[])
+/**
+ * sets up the processes, and the IPC structure.
+ *
+ * @function   main
+ *
+ * @date       2015-02-10
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  int main (int argc , char** argv)
+ *
+ * @param      argc number of command line arguments, including the program
+ *   name.
+ * @param      argv array of c-style character arrays that are the command line
+ *   arguments.
+ *
+ * @return     return code, indication the nature of process termination.
+ */
+int main (int argc , char** argv)
 {
     key_t mkey;
     int msq_id;
-    struct msqid_ds msq_status;
 
     if (argc != 2)
     {
-        fprintf (stderr, "Usage: showmsg keyval\n");
-        exit(1);
+        fprintf(stderr, "Usage: showmsg keyval\n");
+        return 1;
     }
 
     /* Get message queue identifier */
     mkey = (key_t) atoi(argv[1]);
-    if ((msq_id = msgget (mkey, IPC_CREAT)) < 0)
+    if ((msq_id = msgget (mkey, MSG_FLGS)) < 0)
     {
-        perror ("msgget failed!");
-        exit(2);
+        perror("msgget failed!");
+        return 2;
     }
 
     if(fork() == CHILD_PID)
     {
         return child(msq_id);
     }
+    else
+    {
+        return parent(msq_id);
+    }
+}
 
+/**
+ * run on the child process. this process reads from the message queue.
+ *
+ * @function   child
+ *
+ * @date       2015-02-10
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  int child(int msq_id)
+ *
+ * @param      msq_id id of the message queue.
+ *
+ * @return     return code, indicating the nature of program termination.
+ */
+int child(int msq_id)
+{
+    Message msg;
+    size_t bytesRead = 0;
+    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
+    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
+    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
+    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
+    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
+    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
+    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
+    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
+    return 0;
+}
+
+/**
+ * run on the parent process; this function writes to the message queue, and
+ *   then removes it.
+ *
+ * @function   parent
+ *
+ * @date       2015-02-10
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  int parent(int msq_id)
+ *
+ * @param      msq_id id of the message queue
+ *
+ * @return     return code, indicating the nature of process termination.
+ */
+int parent(int msq_id)
+{
+    /* sending message */
     Message msg;
     msg.msgType = 1;
     msg.text = "hey there";
@@ -57,16 +148,6 @@ int main (int argc , char *argv[])
     msgsnd(msq_id, &msg, sizeof(Message), 1);
     sleep(1);
 
-    /* get status info */
-    /*if (msgctl (msq_id, IPC_STAT, &msq_status) < 0)
-    {
-        perror ("msgctl (get status)failed!");
-        exit(3);
-    }*/
-
-    /* print out status information */
-    /*mqstat_print (mkey, msq_id, &msq_status);*/
-
     /* Remove he message queue */
     if (msgctl (msq_id, IPC_RMID, 0) < 0)
     {
@@ -74,34 +155,5 @@ int main (int argc , char *argv[])
         exit (3);
     }
 
-    exit(0);
-}
-
-int child(int msq_id)
-{
-    Message msg;
-    size_t bytesRead = 0;
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s\n", bytesRead, msg.text);
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s\n", bytesRead, msg.text);
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s\n", bytesRead, msg.text);
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s\n", bytesRead, msg.text);
     return 0;
-}
-
-/* status info print function */
-void mqstat_print (key_t mkey, int mqid, struct msqid_ds *mstat)
-{
-    /* call the library function ctime */
-    // char *ctime();
-
-    printf ("\nKey %d, msg_qid %d\n\n", mkey, mqid);
-    printf ("%d messages on queue\n\n", (int)mstat->msg_qnum);
-    printf ("Last send by proc %d at %s\n",
-        mstat->msg_lspid, ctime(&(mstat->msg_stime)));
-    printf ("Last recv by proc %d at %s\n",
-        mstat->msg_lrpid, ctime(&(mstat->msg_rtime)));
 }
