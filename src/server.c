@@ -6,16 +6,16 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
-#include "message.h"
+#include <stdbool.h>
+#include "messagequeuehelper.h"
 
-#define CHILD_PID 0
-#define MSG_FLGS 0644 | IPC_CREAT
-
-int child(int msq_id);
-int parent(int msq_id);
+/* function prototypes */
+static void parse_message_q_msg(void*);
+static void parse_application_msg(void*);
+static void message_queue_read_loop(int);
 
 /**
- * sets up the processes, and the IPC structure.
+ * sets up the message queue, and listens for clients to connect.
  *
  * @function   main
  *
@@ -40,110 +40,56 @@ int parent(int msq_id);
  */
 int main (int argc , char** argv)
 {
-    key_t mkey;
-    int msq_id;
+    int exitCode;
+    int msgQId;
 
-    if (argc != 2)
+    /* create the message queue. */
+    if(!get_message_queue(&msgQId))
     {
-        fprintf(stderr, "Usage: showmsg keyval\n");
+        fprintf(stderr, "get_message_queue failed: %d\n", errno);
         return 1;
     }
 
-    /* Get message queue identifier */
-    mkey = (key_t) atoi(argv[1]);
-    if ((msq_id = msgget (mkey, MSG_FLGS)) < 0)
+    /* execute main loop of the server. */
+    exitCode = message_queue_read_loop(msgQId);
+
+    /* remove message queue. */
+    if(!remove_message_queue(msgQId))
     {
-        perror("msgget failed!");
-        return 2;
+        fprintf(stderr, "remove_message_queue failed: %d\n", errno);
+        return 1;
     }
 
-    if(fork() == CHILD_PID)
-    {
-        return child(msq_id);
-    }
-    else
-    {
-        return parent(msq_id);
-    }
+    /* end program... */
+    return exitCode;
 }
 
 /**
- * run on the child process. this process reads from the message queue.
+ * blocking function. this is the loop that reads from the message queue, and passes them on to handler functions.
  *
- * @function   child
+ * @function   message_queue_read_loop
  *
  * @date       2015-02-10
  *
  * @revision   none
  *
- * @designer   EricTsang
+ * @designer   Eric Tsang
  *
- * @programmer EricTsang
+ * @programmer Eric Tsang
  *
  * @note       none
  *
- * @signature  int child(int msq_id)
+ * @signature  static void message_queue_read_loop(int msgQId)
  *
- * @param      msq_id id of the message queue.
+ * @param      msgQId [description]
  *
- * @return     return code, indicating the nature of program termination.
+ * @return     0 upon normal loop exit (EOF); 1 otherwise (error).
  */
-int child(int msq_id)
+static int message_queue_read_loop(int msgQId)
 {
-    Message msg;
-    size_t bytesRead = 0;
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    bytesRead = msgrcv(msq_id, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
     return 0;
-}
-
-/**
- * run on the parent process; this function writes to the message queue, and
- *   then removes it.
- *
- * @function   parent
- *
- * @date       2015-02-10
- *
- * @revision   none
- *
- * @designer   EricTsang
- *
- * @programmer EricTsang
- *
- * @note       none
- *
- * @signature  int parent(int msq_id)
- *
- * @param      msq_id id of the message queue
- *
- * @return     return code, indicating the nature of process termination.
- */
-int parent(int msq_id)
-{
-    /* sending message */
-    Message msg;
-    msg.msgType = 1;
-    msg.text = "hey there";
-    msgsnd(msq_id, &msg, sizeof(Message), 1);
-    sleep(1);
-    msgsnd(msq_id, &msg, sizeof(Message), 1);
-    sleep(1);
-    msgsnd(msq_id, &msg, sizeof(Message), 1);
-    sleep(1);
-
-    /* Remove he message queue */
-    if (msgctl (msq_id, IPC_RMID, 0) < 0)
+    while(true)
     {
-        perror ("msgctl (remove queue) failed!");
-        exit (3);
-    }
 
-    return 0;
+    }
 }
