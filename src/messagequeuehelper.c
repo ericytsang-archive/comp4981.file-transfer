@@ -15,37 +15,33 @@
  *
  * @note
  *
- * upon failure, the function returns false, and reassigned the value at the
- *   address of msgQId to -1.
+ * upon failure, the function exits the program.
  *
- * upon success, the function returns true, and reassigns the value at the
+ * upon success, the function returns, and reassigns the value at the
  *   address of msgQId to the id of the message queue.
  *
  * @signature  int get_message_queue(int* msgQId)
  *
  * @param      msgQId pointer to integer that will hold the id of the message
- *   queue upon success, or -1 on failure.
- *
- * @return     true if the operation succeeds; false otherwise.
+ *   queue upon success.
  */
-int get_message_queue(int* msgQId)
+void get_message_queue(int* msgQId)
 {
     int msggetResult = msgget((key_t) MSGQ_KEY, MSGQ_FLGS);
     if(msggetResult >= 0)
     {
         msgQId = msggetResult;
-        return false;
     }
     else
     {
         msgQId = -1;
-        return true;
+        fprintf(stderr, "get_message_queue failed: %d\n", errno);
+        exit(1);
     }
 }
 
 /**
- * removed the identified message queue. returns true upon successful removal;
- *   false otherwise.
+ * removes the identified message queue. returns upon success, exits otherwise.
  *
  * @function   remove_message_queue
  *
@@ -62,13 +58,14 @@ int get_message_queue(int* msgQId)
  * @signature  int remove_message_queue(int msgQId)
  *
  * @param      msgQId id number of the message queue to remove
- *
- * @return     true if the message queue was removed successfully; false
- *   otherwise.
  */
-int remove_message_queue(int msgQId)
+void remove_message_queue(int msgQId)
 {
-    return (msgctl(msgQId, IPC_RMID, 0) >= 0)
+    if(msgctl(msgQId, IPC_RMID, 0) < 0)
+    {
+        fprintf(stderr, "remove_message_queue failed: %d\n", errno);
+        exit(1);
+    }
 }
 
 int message_queue_recv_accept(int msgQId, void* acceptStruct)

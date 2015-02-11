@@ -44,21 +44,16 @@ int main (int argc , char** argv)
     int msgQId;
 
     /* create the message queue. */
-    if(!get_message_queue(&msgQId))
-    {
-        fprintf(stderr, "get_message_queue failed: %d\n", errno);
-        return 1;
-    }
+    get_message_queue(&msgQId);
+
+    /* set up signal handler to remove ipc. */
+    signal(SIGINT, terminate_program);
 
     /* execute main loop of the server. */
     exitCode = message_queue_read_loop(msgQId);
 
     /* remove message queue. */
-    if(!remove_message_queue(msgQId))
-    {
-        fprintf(stderr, "remove_message_queue failed: %d\n", errno);
-        return 1;
-    }
+    remove_message_queue(msgQId);
 
     /* end program... */
     return exitCode;
@@ -87,9 +82,12 @@ int main (int argc , char** argv)
  */
 static int message_queue_read_loop(int msgQId)
 {
+    sleep(5);
     return 0;
-    while(true)
-    {
+}
 
-    }
+static int terminate_program(int sigNum)
+{
+    remove_message_queue(msgQId);
+    exit(0);
 }

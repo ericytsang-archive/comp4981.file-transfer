@@ -2,6 +2,7 @@
 #define MESSAGEQUEUEHELPER_H
 
 #include <stdbool.h>
+#include <stdio.h>
 
 /* message queue creation parameters */
 #define MSGQ_KEY 8012
@@ -36,7 +37,7 @@ AcceptMsg;
 /*SessionMsg*/
 
 /* function prototypes */
-int get_message_queue(int* msgQId);
-int remove_message_queue(int msgQId)
+void get_message_queue(int* msgQId);
+void remove_message_queue(int msgQId);
 
 #endif
