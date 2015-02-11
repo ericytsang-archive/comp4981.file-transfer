@@ -235,29 +235,35 @@ static int serve_client(pid_t clientPid, int priority, char* filePath)
     dataMsg.dataType = MSG_DATA_DATA;
 
     /* verify priority */
-    if(priority < 0 || priority > 10)
+    if(priority < MIN_PROC_PRIO || priority > MAX_PROC_PRIO)
     {
         sprintf(prntMsg.data.printMsg.str,
-            "invalid priority; 0 <= priority <= 10\n");
+            "invalid priority; %d <= priority <= %d\n",
+            MIN_PROC_PRIO, MAX_PROC_PRIO);
         msg_send(msgQId, &prntMsg, clientPid);
         msg_send(msgQId, &stopMsg, clientPid);
+        return 0;
     }
 
     /* set priority */
-    if(setpriority(PRIO_PROCESS, getpid(), priority) == -1)
+    if(setpriority(PRIO_PROCESS, getpid(), priority) != 0)
     {
-        sprintf(prntMsg.data.printMsg.str, "failed to set priority: %d\n", errno);
+        sprintf(prntMsg.data.printMsg.str,
+            "failed to set priority: %d\n", errno);
         msg_send(msgQId, &prntMsg, clientPid);
         msg_send(msgQId, &stopMsg, clientPid);
+        return 0;
     }
 
     /* open the file */
     fd = open(filePath, 0);
     if(fd == -1)
     {
-        sprintf(prntMsg.data.printMsg.str, "failed to open file: %d\n", errno);
+        sprintf(prntMsg.data.printMsg.str,
+            "failed to open file: %d\n", errno);
         msg_send(msgQId, &prntMsg, clientPid);
         msg_send(msgQId, &stopMsg, clientPid);
+        return 0;
     }
 
     /* read from the file & send to client in a loop */

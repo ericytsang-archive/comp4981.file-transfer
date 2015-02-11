@@ -11,3 +11,6 @@
 #include <sys/resource.h>
 #include <fcntl.h>
 #include "messagequeuehelper.h"
+
+#define MIN_PROC_PRIO -20
+#define MAX_PROC_PRIO 20
