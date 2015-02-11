@@ -30,11 +30,12 @@ void get_message_queue(int* msgQId)
     int msggetResult = msgget((key_t) MSGQ_KEY, MSGQ_FLGS);
     if(msggetResult >= 0)
     {
-        msgQId = msggetResult;
+        *msgQId = msggetResult;
+        printf("msgQId: %d\n", *msgQId);
     }
     else
     {
-        msgQId = -1;
+        *msgQId = -1;
         fprintf(stderr, "get_message_queue failed: %d\n", errno);
         exit(1);
     }
@@ -68,55 +69,19 @@ void remove_message_queue(int msgQId)
     }
 }
 
-int message_queue_recv_accept(int msgQId, void* acceptStruct)
+int msg_recv(int msgQId, Message* msg, int msgType)
 {
-    return msgrcv(msgQId, acceptStruct, sizeof(AcceptMsg), MSGQ_ACCEPT_T, 0);
-}
-
-static int message_queue_recv(int msgQId, void* buffer, int bytesToRead, int msgType)
-{
-    return msgrcv(msgQId, buffer, bytesToRead, msgType, 0);
-}
-
-int message_queue_send()
-{
-    return 0;
-}
-
-int child(int msgQId)
-{
-    Message msg;
-    size_t bytesRead = 0;
-    bytesRead = msgrcv(msgQId, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    bytesRead = msgrcv(msgQId, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    bytesRead = msgrcv(msgQId, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    bytesRead = msgrcv(msgQId, &msg, sizeof(Message), 1, 0);
-    printf("%d : %s : %d\n", (int) bytesRead, msg.text, errno);
-    return 0;
-}
-
-int parent(int msgQId)
-{
-    /* sending message */
-    Message msg;
-    msg.msgType = 1;
-    msg.text = "hey there";
-    msgsnd(msgQId, &msg, sizeof(Message), 1);
-    sleep(1);
-    msgsnd(msgQId, &msg, sizeof(Message), 1);
-    sleep(1);
-    msgsnd(msgQId, &msg, sizeof(Message), 1);
-    sleep(1);
-
-    /* Remove the message queue */
-    if (msgctl (msgQId, IPC_RMID, 0) < 0)
+    int msgLen = sizeof(Message);
+    int returnValue = msgrcv(msgQId, msg, msgLen, msgType, 0);
+    if(returnValue == -1)
     {
-        perror ("msgctl (remove queue) failed!");
-        exit (3);
+        fprintf(stderr, "msg_recv failed: %d\n", errno);
     }
+    return returnValue;
+}
 
-    return 0;
+int msg_send(int msgQId, Message* msg, int msgType)
+{
+    msg->msgType = msgType;
+    return msgsnd(msgQId, msg, sizeof(Message), 0);
 }
