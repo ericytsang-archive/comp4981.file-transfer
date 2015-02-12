@@ -82,7 +82,7 @@ int main(int argc , char** argv)
     signal(SIGINT, sigint_handler);
 
     /* start exit on character thread */
-    pthread_create (&exitOnCharThread, NULL, exit_on_char, 0);
+    pthread_create(&exitOnCharThread, NULL, exit_on_char, 0);
 
     /* get the message queue. */
     get_message_queue(&msgQId);

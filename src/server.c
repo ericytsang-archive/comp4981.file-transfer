@@ -199,12 +199,13 @@ static bool parse_msgq_msg(Message* msg)
 
     switch(msg->dataType)
     {
-    case MSG_DATA_STOP_SVR:
-        returnVal = false;
-        break;
     case MSG_DATA_CONNECT:
         handle_connect_msg(&msg->data.connectMsg);
         returnVal = true;
+        break;
+    default:
+        fprinf(stderr, "unknown message type!")
+        returnVal = false;
         break;
     }
 

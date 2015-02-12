@@ -48,12 +48,11 @@
 #define MSGQ_ACCEPT_T 2
 
 /* constant message data types */
-#define MSG_DATA_STOP_SVR 0
-#define MSG_DATA_STOPCLNT 1
-#define MSG_DATA_CONNECT  2
-#define MSG_DATA_PRINT    3
-#define MSG_DATA_DATA     4
-#define MSG_DATA_PID      5
+#define MSG_DATA_STOPCLNT 0
+#define MSG_DATA_CONNECT  1
+#define MSG_DATA_PRINT    2
+#define MSG_DATA_DATA     3
+#define MSG_DATA_PID      4
 
 /**
  * payload of message sent to the server on the message queue, with message type
