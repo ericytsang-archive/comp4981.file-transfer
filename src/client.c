@@ -9,6 +9,7 @@
  * @function   static void msgq_loop(int msgQId)
  * @function   static void connect(int msgQId, int priority, char* filePath)
  * @function   static void sigint_handler(int sigNum)
+ * @function   static void* exit_on_char(void* nothing)
  *
  * @date       2015-02-11
  *
@@ -28,6 +29,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "messagequeuehelper.h"
 #include "stdbool.h"
 
@@ -35,6 +37,7 @@
 static void msgq_loop(int msgQId);
 static void connect(int msgQId, int priority, char* filePath);
 static void sigint_handler(int sigNum);
+static void* exit_on_char(void* nothing);
 
 /* inter process communication globals */
 static int msgQId;
@@ -55,7 +58,7 @@ static int sessionPid = 0;
  *
  * @note       none
  *
- * @signature  int main (int argc , char** argv)
+ * @signature  int main(int argc , char** argv)
  *
  * @param      argc number of command line arguments, including the program
  *   name.
@@ -64,11 +67,9 @@ static int sessionPid = 0;
  *
  * @return     return code, indication the nature of process termination.
  */
-int main (int argc , char** argv)
+int main(int argc , char** argv)
 {
-    /* start exit on character thread */
     pthread_t exitOnCharThread;
-    pthread_create (&exitOnCharThread, NULL, (void*) &exit_on_char, 0);
 
     /* verify command line arguments */
     if(argc != 3)
@@ -79,6 +80,9 @@ int main (int argc , char** argv)
 
     /* set signal handler */
     signal(SIGINT, sigint_handler);
+
+    /* start exit on character thread */
+    pthread_create (&exitOnCharThread, NULL, exit_on_char, 0);
 
     /* get the message queue. */
     get_message_queue(&msgQId);
@@ -210,12 +214,42 @@ static void msgq_loop(int msgQId)
  */
 static void sigint_handler(int sigNum)
 {
+    /* send signal to session indicating to them that we are no longer */
     kill(sessionPid, SIGUSR1);
+
+    /* exit... */
     exit(sigNum);
 }
 
-void exit_on_char(void* nothing)
+/**
+ * threaded function. it makes the process exit when a character is received
+ *   from stdin.
+ *
+ * @function   exit_on_char
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  static void* exit_on_char(void* nothing)
+ *
+ * @param      nothing pointer to address 0
+ */
+static void* exit_on_char(void* nothing)
 {
-    get_char();
+    /* wait for input */
+    getchar();
+
+    /* kill ourself */
     kill(getpid(), SIGINT);
+
+    /* exit thread */
+    pthread_exit(0);
+    return nothing;
 }

@@ -13,7 +13,7 @@ server: server.o messagequeuehelper.o session.o
 	$(CC) -o ./server.out server.o messagequeuehelper.o session.o
 
 client: client.o messagequeuehelper.o
-	$(CC) -o ./client.out client.o messagequeuehelper.o
+	$(CC) -lpthread -o ./client.out client.o messagequeuehelper.o
 
 
 
