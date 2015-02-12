@@ -1,4 +1,35 @@
-#include "client.h"
+/**
+ * the client program.
+ *
+ * @sourceFile client.c
+ *
+ * @program    client.out
+ *
+ * @function   int main (int argc , char** argv)
+ * @function   static void msgq_loop(int msgQId)
+ * @function   static void connect(int msgQId, int priority, char* filePath)
+ * @function   static void sigint_handler(int sigNum)
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note
+ *
+ * the client program connects to the server, and requests a file to be sent to
+ *   it through the message queue, and then reads the file contents from the
+ *   message queue, and prints it to the screen.
+ */
+#include <string.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "messagequeuehelper.h"
+#include "stdbool.h"
 
 /* function prototypes */
 static void msgq_loop(int msgQId);
@@ -59,6 +90,30 @@ int main (int argc , char** argv)
     return 0;
 }
 
+/**
+ * sends a connect message to the server.
+ *
+ * @function   connect
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  static void connect(int msgQId, int priority, char* filePath)
+ *
+ * @param      msgQId id of the message queue to send the connect message to.
+ * @param      priority priority of this client. the higher the priority, the
+ *   faster it will get its messages. highest priority is 0, lowest priority is
+ *   20.
+ * @param      filePath path to file to have sent to the client through the
+ *   message queue.
+ */
 static void connect(int msgQId, int priority, char* filePath)
 {
     /* construct connect message */
@@ -72,6 +127,26 @@ static void connect(int msgQId, int priority, char* filePath)
     msg_send(msgQId, &msg, MSGQ_SVR_T);
 }
 
+/**
+ * message loop of the client, it continuously dequeues messages from the
+ *   message queue, and processes them.
+ *
+ * @function   msgq_loop
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  static void msgq_loop(int msgQId)
+ *
+ * @param      msgQId id of the message queue to dequeue from.
+ */
 static void msgq_loop(int msgQId)
 {
     static bool stopLoop = false;
@@ -106,6 +181,30 @@ static void msgq_loop(int msgQId)
     }
 }
 
+/**
+ * interrupt handler for the client.
+ *
+ * @function   sigint_handler
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note
+ *
+ * the interrupt handler for the client. it sends a signal to its server process
+ *   telling it that the client is terminating. this sets the session perform
+ *   cleanup, and stop writing to the message queue.
+ *
+ * @signature  static void sigint_handler(int sigNum)
+ *
+ * @param      sigNum signal number that is invoking this function. this will
+ *   always be SIGINT.
+ */
 static void sigint_handler(int sigNum)
 {
     kill(sessionPid, SIGUSR1);

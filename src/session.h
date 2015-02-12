@@ -1,3 +1,22 @@
+/**
+ * header file for session.c, exposing its interface.
+ *
+ * @sourceFile session.h
+ *
+ * @program    server.out
+ *
+ * @function   int serve_client(pid_t clientPid, int priority, char* filePath);
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>

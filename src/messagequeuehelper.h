@@ -1,3 +1,28 @@
+/**
+ * header file for messagequeuehelper.c, exposing its interface.
+ *
+ * @sourceFile messagequeuehelper.h
+ *
+ * @program    server.out, client.out
+ *
+ * @function   void get_message_queue(int* msgQId);
+ * @function   void make_message_queue(int* msgQId);
+ * @function   void remove_message_queue(int msgQId);
+ * @function   int msg_recv(int msgQId, Message* msg, int msgType);
+ * @function   int msg_send(int msgQId, Message* msg, int msgType);
+ * @function   int send_print_msg(int msgQId, void* str, int msgType);
+ * @function   void msg_clear_type(int msgQId, int msgType);
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ */
 #ifndef MESSAGEQUEUEHELPER_H
 #define MESSAGEQUEUEHELPER_H
 
@@ -23,15 +48,17 @@
 #define MSGQ_ACCEPT_T 2
 
 /* constant message data types */
-#define MSG_DATA_STOP_SVR 0         /* sent as type MSGQ_ACCEPT_T message. breaks out of the server loop */
-#define MSG_DATA_CONNECT  1
-#define MSG_DATA_PRINT    2
-#define MSG_DATA_STOPCLNT 3
+#define MSG_DATA_STOP_SVR 0
+#define MSG_DATA_STOPCLNT 1
+#define MSG_DATA_CONNECT  2
+#define MSG_DATA_PRINT    3
 #define MSG_DATA_DATA     4
 #define MSG_DATA_PID      5
 
 /**
- * message data structures
+ * payload of message sent to the server on the message queue, with message type
+ *   1. it contains information about what the client, like its process id, what
+ *   file it wants read to it, and with what priority client it is.
  */
 typedef struct
 {
@@ -41,12 +68,21 @@ typedef struct
 }
 ConnectMsg;
 
+/**
+ * payload of the message sent to client processes. it contains a single string
+ *   that the client should print to the screen.
+ */
 typedef struct
 {
     char str[MAX_MSG_PRNTMSGSTR_LEN];
 }
 PrintMsg;
 
+/**
+ * payload of the message sent to the client process on the message queue. it
+ *   contains data that needs to be print onto the client's screen. this is
+ *   necessary because unlike printMsg, the data here may contain nulls.
+ */
 typedef struct
 {
     int len;
@@ -54,6 +90,12 @@ typedef struct
 }
 DataMsg;
 
+/**
+ * this is a message sent from the session process to the client on the message
+ *   queue. it is used to inform the client of the session process's process id,
+ *   so that when the client terminates, it can inform the session to cleanup
+ *   and terminate as well.
+ */
 typedef struct
 {
     pid_t pid;
@@ -61,7 +103,7 @@ typedef struct
 PidMsg;
 
 /**
- * message structures
+ * payload of each message.
  */
 typedef union
 {
@@ -72,6 +114,9 @@ typedef union
 }
 MsgData;
 
+/**
+ * the message structure that's passed around through the message queue.
+ */
 typedef struct
 {
     long msgType;

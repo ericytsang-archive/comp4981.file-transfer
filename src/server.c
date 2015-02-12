@@ -1,4 +1,46 @@
-#include "server.h"
+/**
+ * server source file.
+ *
+ * @sourceFile server.c
+ *
+ * @program    server.out
+ *
+ * @function   int main(void)
+ * @function   static int sigint_handler(int sigNum)
+ * @function   static void msgq_read_loop(int msgQId)
+ * @function   static bool parse_msgq_msg(Message* msg)
+ * @function   static void handle_connect_msg(ConnectMsg* connectMsg)
+ *
+ * @date       2015-02-11
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note
+ *
+ * the server waits for clients to connect, and parses their request, and
+ *   transfers the files contents to the server.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <fcntl.h>
+#include "messagequeuehelper.h"
+#include "session.h"
+
+/* typedefs */
+typedef void (*sighandler_t)(int);
 
 /* function prototypes */
 static void sigint_handler(int);
@@ -27,7 +69,7 @@ static sighandler_t previousSigHandler;
  *
  * @note       none
  *
- * @signature  int main (int argc , char** argv)
+ * @signature  int main(void)
  *
  * @return     return code, indication the nature of process termination.
  */
@@ -172,7 +214,7 @@ static bool parse_msgq_msg(Message* msg)
 /**
  * handles the connection request message.
  *
- * @function   [class_header] [method_header]
+ * @function   handle_connect_msg
  *
  * @date       2015-02-11
  *
@@ -187,9 +229,9 @@ static bool parse_msgq_msg(Message* msg)
  * this function handles a connection request message by starting a new process
  *   that will be used to serve the client.
  *
- * @signature  [some_headers_only] [class_header] [file_header]
+ * @signature  static void handle_connect_msg(ConnectMsg* connectMsg)
  *
- * @param      msg [description]
+ * @param      connectMsg pointer to the received ConnectMsg structure
  */
 static void handle_connect_msg(ConnectMsg* connectMsg)
 {
