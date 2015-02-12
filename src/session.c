@@ -10,6 +10,9 @@
  * @function   static int set_process_priority(int priority)
  * @function   static void sigusr1_handler(int sigNum)
  * @function   static void fatal(char* str)
+ * @function   static void initialize(int clntPid, int priority, char* filePath)
+ * @function   static void terminate_program(bool clientPresent)
+ * @function   static void read_loop(void)
  *
  * @date       2015-02-11
  *
@@ -29,9 +32,12 @@
 static void sigusr1_handler(int sigNum);
 static int set_process_priority(int priority);
 static void fatal(char* str);
+static void initialize(int clntPid, int priority, char* filePath);
+static void terminate_program(bool clientPresent);
+static void read_loop(void);
 
 /* global variables for inter process communication */
-static pid_t clientPid;
+static pid_t clientPid = 0;
 static int msgQId;
 
 /* file descriptor to read to the client process */
@@ -67,28 +73,54 @@ static int fd;
  */
 int serve_client(pid_t clntPid, int priority, char* filePath)
 {
-    int fd;             /* file to read to client */
-    size_t nRead;       /* bytes read from file per read */
-    Message stopMsg;    /* ends the client process */
-    Message dataMsg;    /* used to send file data to client */
-    Message pidMsg;     /* used to send the client the PID of the session */
-    char fatalstring[MAX_STR_LEN];
+    /* obtain system resources for the process */
+    initialize(clntPid, priority, filePath);
 
-    /* initialize message types */
-    stopMsg.dataType = MSG_DATA_STOPCLNT;
-    dataMsg.dataType = MSG_DATA_DATA;
+    /* do the read loop */
+    read_loop();
+
+    /* terminate program... */
+    terminate_program(true);
+
+    return 0;
+}
+
+/**
+ * obtains the resources needed by the session for it to function.
+ *
+ * @function   initialize
+ *
+ * @date       2015-02-12
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  static void initialize(int clntPid, int priority, char* filePath)
+ *
+ * @param      clntPid process id of the session's client process
+ */
+static void initialize(int clntPid, int priority, char* filePath)
+{
+    Message pidMsg;         /* used to send client the PID of this process */
+    char fatalstring[MAX_STR_LEN];  /* buffer used to print fatal messages */
+
     pidMsg.dataType  = MSG_DATA_PID;
+
+    /* initialize global client PID */
+    clientPid = clntPid;
 
     /* set signal handler */
     signal(SIGUSR1, sigusr1_handler);
 
-    /* initialize static variables */
-    clientPid = clntPid;
-
     /* get the message queue. */
     get_message_queue(&msgQId);
 
-    /* verify priority */
+    /* verify priority input */
     if(priority < MIN_PROC_PRIO || priority > MAX_PROC_PRIO)
     {
         sprintf(fatalstring, "invalid priority; %d <= priority <= %d\n",
@@ -103,10 +135,6 @@ int serve_client(pid_t clntPid, int priority, char* filePath)
         fatal(fatalstring);
     }
 
-    /* send the client the session's PID */
-    pidMsg.data.pidMsg.pid = getpid();
-    msg_send(msgQId, &pidMsg, clientPid);
-
     /* open the file */
     fd = open(filePath, 0);
     if(fd == -1)
@@ -114,6 +142,37 @@ int serve_client(pid_t clntPid, int priority, char* filePath)
         sprintf(fatalstring, "failed to open file: %d\n", errno);
         fatal(fatalstring);
     }
+
+    /* send the client the session's PID */
+    pidMsg.data.pidMsg.pid = getpid();
+    msg_send(msgQId, &pidMsg, clientPid);
+}
+
+/**
+ * performs the process's main read loop. it reads from the open file, and send
+ *   it to the client through the message queue.
+ *
+ * @function   read_loop
+ *
+ * @date       2015-02-12
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note       none
+ *
+ * @signature  static void read_loop(void)
+ */
+static void read_loop(void)
+{
+    size_t nRead;       /* bytes read from file per read */
+    Message dataMsg;    /* used to send file data to client */
+
+    /* initialize message types */
+    dataMsg.dataType = MSG_DATA_DATA;
 
     /* read from the file & send to client in a loop */
     do
@@ -126,14 +185,64 @@ int serve_client(pid_t clntPid, int priority, char* filePath)
         msg_send(msgQId, &dataMsg, clientPid);
     }
     while(nRead > 0);
+}
 
-    /* clean up; release resources */
+/**
+ * cleans up, and terminates the process.
+ *
+ * @function   terminate_program
+ *
+ * @date       2015-02-12
+ *
+ * @revision   none
+ *
+ * @designer   EricTsang
+ *
+ * @programmer EricTsang
+ *
+ * @note
+ *
+ * the termination process is different depending if the client is preset, still
+ *   listening to the message queue or not.
+ *
+ * if the client is present, the process will enqueue a stop client message into
+ *   the message queue.
+ *
+ * if the client process is no longer present, then the session will clear all
+ *   messages of its type, release its resources and terminate.
+ *
+ * @signature  static void terminate_program(bool clientPresent)
+ *
+ * @param      clientPresent true if the client is still active, ready to
+ *   dequeue messages from the message queue; false otherwise.
+ */
+static void terminate_program(bool clientPresent)
+{
+    /**
+     * if the client is present, send stop message; clear all messages of the
+     *   client type otherwise.
+     */
+    if(clientPresent)
+    {
+        /**
+         * declare, initialize & send a stop message.
+         */
+        Message stopMsg;
+        stopMsg.dataType = MSG_DATA_STOPCLNT;
+        msg_send(msgQId, &stopMsg, clientPid);
+    }
+    else
+    {
+        /**
+         * clear all messages for the client, so message queue isn't littered
+         *   with stuff.
+         */
+        msg_clear_type(msgQId, clientPid);
+    }
+
+    /* release resources, and exit the program */
     close(fd);
-
-    /* stop the client. */
-    msg_send(msgQId, &stopMsg, clientPid);
-
-    return 0;
+    exit(0);
 }
 
 /**
@@ -186,9 +295,10 @@ static int set_process_priority(int priority)
  */
 static void sigusr1_handler(int sigNum)
 {
-    msg_clear_type(msgQId, clientPid);
-    close(fd);
-    exit(sigNum);
+    if(sigNum == SIGUSR1)
+    {
+        terminate_program(false);
+    }
 }
 
 /**
@@ -215,17 +325,12 @@ static void fatal(char* str)
 {
     /* declare and initialize a print & stop message structures */
     Message prntMsg;
-    Message stopMsg;
     prntMsg.dataType = MSG_DATA_PRINT;
-    stopMsg.dataType = MSG_DATA_STOPCLNT;
 
     /* send a print message as well as an stop message to the client */
     sprintf(prntMsg.data.printMsg.str, "fatal: %s", str);
     msg_send(msgQId, &prntMsg, clientPid);
-    msg_send(msgQId, &stopMsg, clientPid);
 
-    /* release resources */
-    close(fd);
-
-    exit(0);
+    /* terminate program... */
+    terminate_program(true);
 }

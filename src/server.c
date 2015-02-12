@@ -77,11 +77,11 @@ int main(void)
 {
     int exitCode;
 
-    /* create the message queue. */
-    make_message_queue(&msgQId);
-
     /* set up signal handler to remove IPC. */
     previousSigHandler = signal(SIGINT, sigint_handler);
+
+    /* create the message queue. */
+    make_message_queue(&msgQId);
 
     /* execute main loop of the server. */
     exitCode = msgq_read_loop(msgQId);
@@ -153,13 +153,13 @@ static int msgq_read_loop(int msgQId)
     {
         switch(msg_recv(msgQId, &msg, MSGQ_SVR_T))
         {
-        case 0:
+        case 0:     /* handle EOF */
             breakMsgLoop = true;
             break;
-        case -1:
+        case -1:    /* handle error */
             breakMsgLoop = true;
             break;
-        default:
+        default:    /* handle message */
             breakMsgLoop = !parse_msgq_msg(&msg);
             break;
         }
@@ -199,11 +199,11 @@ static bool parse_msgq_msg(Message* msg)
 
     switch(msg->dataType)
     {
-    case MSG_DATA_CONNECT:
+    case MSG_DATA_CONNECT:  /* handle connection message */
         handle_connect_msg(&msg->data.connectMsg);
         returnVal = true;
         break;
-    default:
+    default:                /* handle any other kind of message */
         fprintf(stderr, "unknown message type!\n");
         returnVal = false;
         break;
