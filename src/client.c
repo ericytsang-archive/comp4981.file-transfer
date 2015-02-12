@@ -66,6 +66,9 @@ static int sessionPid = 0;
  */
 int main (int argc , char** argv)
 {
+    /* start exit on character thread */
+    pthread_t exitOnCharThread;
+    pthread_create (&exitOnCharThread, NULL, (void*) &exit_on_char, 0);
 
     /* verify command line arguments */
     if(argc != 3)
@@ -209,4 +212,10 @@ static void sigint_handler(int sigNum)
 {
     kill(sessionPid, SIGUSR1);
     exit(sigNum);
+}
+
+void exit_on_char(void* nothing)
+{
+    get_char();
+    kill(getpid(), SIGINT);
 }
