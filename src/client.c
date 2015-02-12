@@ -3,9 +3,11 @@
 /* function prototypes */
 static void msgq_loop(int msgQId);
 static void connect(int msgQId, int priority, char* filePath);
+static void sigint_handler(int sigNum);
 
 /* inter process communication globals */
 static int msgQId;
+static int sessionPid = 0;
 
 /**
  * sets up the message queue, and listens for clients to connect.
@@ -34,14 +36,18 @@ static int msgQId;
 int main (int argc , char** argv)
 {
 
-    /* get the message queue. */
-    get_message_queue(&msgQId);
-
+    /* verify command line arguments */
     if(argc != 3)
     {
         printf("usage: %s [priority] [filepath]\n", argv[0]);
         exit(0);
     }
+
+    /* set signal handler */
+    signal(SIGINT, sigint_handler);
+
+    /* get the message queue. */
+    get_message_queue(&msgQId);
 
     /* send connection message to server */
     connect(msgQId, atoi(argv[1]), argv[2]);
@@ -88,10 +94,20 @@ static void msgq_loop(int msgQId)
         case MSG_DATA_STOPCLNT:
             stopLoop = true;
             break;
+        case MSG_DATA_PID:
+            sessionPid = msg.data.pidMsg.pid;
+            break;
         default:
             fprintf(stderr, "unknown message type!\n");
+            kill(sessionPid, SIGUSR1);
             stopLoop = true;
             break;
         }
     }
+}
+
+static void sigint_handler(int sigNum)
+{
+    kill(sessionPid, SIGUSR1);
+    exit(sigNum);
 }

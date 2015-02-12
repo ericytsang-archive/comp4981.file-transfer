@@ -11,6 +11,8 @@
 #include <sys/resource.h>
 #include <fcntl.h>
 #include "messagequeuehelper.h"
-#include "session.h"
 
-typedef void (*sighandler_t)(int);
+#define MIN_PROC_PRIO 0
+#define MAX_PROC_PRIO 20
+
+int serve_client(pid_t clientPid, int priority, char* filePath);

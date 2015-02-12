@@ -5,12 +5,12 @@ static void sigint_handler(int);
 static int msgq_read_loop(int);
 static bool parse_msgq_msg(Message*);
 static void handle_connect_msg(ConnectMsg*);
-static int serve_client(pid_t, int, char*);
 
 /**
  * message queue id used by the server.
  */
 static int msgQId;
+static sighandler_t previousSigHandler;
 
 /**
  * sets up the message queue, and listens for clients to connect.
@@ -29,22 +29,17 @@ static int msgQId;
  *
  * @signature  int main (int argc , char** argv)
  *
- * @param      argc number of command line arguments, including the program
- *   name.
- * @param      argv array of c-style character arrays that are the command line
- *   arguments.
- *
  * @return     return code, indication the nature of process termination.
  */
-int main (int argc , char** argv)
+int main(void)
 {
     int exitCode;
 
     /* create the message queue. */
-    get_message_queue(&msgQId);
+    make_message_queue(&msgQId);
 
     /* set up signal handler to remove IPC. */
-    signal(SIGINT, sigint_handler);
+    previousSigHandler = signal(SIGINT, sigint_handler);
 
     /* execute main loop of the server. */
     exitCode = msgq_read_loop(msgQId);
@@ -82,7 +77,7 @@ int main (int argc , char** argv)
 static void sigint_handler(int sigNum)
 {
     remove_message_queue(msgQId);
-    exit(0);
+    exit(sigNum);
 }
 
 /**
@@ -109,8 +104,8 @@ static void sigint_handler(int sigNum)
  */
 static int msgq_read_loop(int msgQId)
 {
-    static int breakMsgLoop = 0;
     Message msg;
+    static int breakMsgLoop = 0;
 
     while(!breakMsgLoop)
     {
@@ -163,11 +158,9 @@ static bool parse_msgq_msg(Message* msg)
     switch(msg->dataType)
     {
     case MSG_DATA_STOP_SVR:
-        printf("MSG_DATA_STOP_SVR\n");
         returnVal = false;
         break;
     case MSG_DATA_CONNECT:
-        printf("MSG_DATA_CONNECT\n");
         handle_connect_msg(&msg->data.connectMsg);
         returnVal = true;
         break;
@@ -205,6 +198,9 @@ static void handle_connect_msg(ConnectMsg* connectMsg)
     {
         int returnValue;
 
+        /* reset signal handler */
+        signal(SIGINT, previousSigHandler);
+
         /* print connection request */
         printf("connectMsg:\n");
         printf("    clientPid: %d\n", connectMsg->clientPid);
@@ -219,68 +215,4 @@ static void handle_connect_msg(ConnectMsg* connectMsg)
 
         exit(returnValue);
     }
-}
-
-static int serve_client(pid_t clientPid, int priority, char* filePath)
-{
-    int fd;             /* file to read to client */
-    size_t nRead;       /* bytes read from file per read */
-    Message stopMsg;    /* ends the client process */
-    Message prntMsg;    /* makes client print message contents to screen */
-    Message dataMsg;    /* used to send file data to client */
-
-    /* initialize message types */
-    stopMsg.dataType = MSG_DATA_STOPCLNT;
-    prntMsg.dataType = MSG_DATA_PRINT;
-    dataMsg.dataType = MSG_DATA_DATA;
-
-    /* verify priority */
-    if(priority < MIN_PROC_PRIO || priority > MAX_PROC_PRIO)
-    {
-        sprintf(prntMsg.data.printMsg.str,
-            "invalid priority; %d <= priority <= %d\n",
-            MIN_PROC_PRIO, MAX_PROC_PRIO);
-        msg_send(msgQId, &prntMsg, clientPid);
-        msg_send(msgQId, &stopMsg, clientPid);
-        return 0;
-    }
-
-    /* set priority */
-    if(setpriority(PRIO_PROCESS, getpid(), priority) != 0)
-    {
-        sprintf(prntMsg.data.printMsg.str,
-            "failed to set priority: %d\n", errno);
-        msg_send(msgQId, &prntMsg, clientPid);
-        msg_send(msgQId, &stopMsg, clientPid);
-        return 0;
-    }
-
-    /* open the file */
-    fd = open(filePath, 0);
-    if(fd == -1)
-    {
-        sprintf(prntMsg.data.printMsg.str,
-            "failed to open file: %d\n", errno);
-        msg_send(msgQId, &prntMsg, clientPid);
-        msg_send(msgQId, &stopMsg, clientPid);
-        return 0;
-    }
-
-    /* read from the file & send to client in a loop */
-    do
-    {
-        nRead = read(fd, dataMsg.data.dataMsg.data,
-            MAX_MSG_DATAMSGDATA_LEN);
-        dataMsg.data.dataMsg.len = nRead;
-        msg_send(msgQId, &dataMsg, clientPid);
-    }
-    while(nRead > 0);
-
-    /* clean up; release resources */
-    close(fd);
-
-    /* stop the client. */
-    msg_send(msgQId, &stopMsg, clientPid);
-
-    return 0;
 }

@@ -25,13 +25,27 @@
  * @param      msgQId pointer to integer that will hold the id of the message
  *   queue upon success.
  */
-void get_message_queue(int* msgQId)
+void make_message_queue(int* msgQId)
 {
-    int msggetResult = msgget((key_t) MSGQ_KEY, MSGQ_FLGS);
+    int msggetResult = msgget((key_t) MSGQ_KEY, 0644 | IPC_CREAT | IPC_EXCL);
     if(msggetResult >= 0)
     {
         *msgQId = msggetResult;
-        printf("msgQId: %d\n", *msgQId);
+    }
+    else
+    {
+        *msgQId = -1;
+        fprintf(stderr, "make_message_queue failed: %d\n", errno);
+        exit(1);
+    }
+}
+
+void get_message_queue(int* msgQId)
+{
+    int msggetResult = msgget((key_t) MSGQ_KEY, 0);
+    if(msggetResult >= 0)
+    {
+        *msgQId = msggetResult;
     }
     else
     {
@@ -84,4 +98,11 @@ int msg_send(int msgQId, Message* msg, int msgType)
 {
     msg->msgType = msgType;
     return msgsnd(msgQId, msg, sizeof(Message), 0);
+}
+
+void msg_clear_type(int msgQId, int msgType)
+{
+    Message msg;
+    int msgLen = sizeof(Message);
+    while(msgrcv(msgQId, &msg, msgLen, msgType, 0) > 0);
 }
