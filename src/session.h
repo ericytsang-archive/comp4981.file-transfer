@@ -31,7 +31,7 @@
 #include <fcntl.h>
 #include "messagequeuehelper.h"
 
-#define MIN_PROC_PRIO 0
+#define MIN_PROC_PRIO 1
 #define MAX_PROC_PRIO 20
 
 int serve_client(pid_t clientPid, int priority, char* filePath);

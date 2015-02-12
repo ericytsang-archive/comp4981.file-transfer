@@ -30,11 +30,10 @@
 
 /* function prototypes */
 static void sigusr1_handler(int sigNum);
-static int set_process_priority(int priority);
 static void fatal(char* str);
 static void initialize(int clntPid, int priority, char* filePath);
 static void terminate_program(bool clientPresent);
-static void read_loop(void);
+static void read_loop(int);
 
 /* global variables for inter process communication */
 static pid_t clientPid = 0;
@@ -77,7 +76,7 @@ int serve_client(pid_t clntPid, int priority, char* filePath)
     initialize(clntPid, priority, filePath);
 
     /* do the read loop */
-    read_loop();
+    read_loop(priority);
 
     /* terminate program... */
     terminate_program(true);
@@ -128,13 +127,6 @@ static void initialize(int clntPid, int priority, char* filePath)
         fatal(fatalstring);
     }
 
-    /* set priority */
-    if(set_process_priority(priority) != 0)
-    {
-        sprintf(fatalstring, "failed to set priority: %d\n", errno);
-        fatal(fatalstring);
-    }
-
     /* open the file */
     fd = open(filePath, 0);
     if(fd == -1)
@@ -165,8 +157,10 @@ static void initialize(int clntPid, int priority, char* filePath)
  * @note       none
  *
  * @signature  static void read_loop(void)
+ *
+ * @param      priority of the client
  */
-static void read_loop(void)
+static void read_loop(int priority)
 {
     size_t nRead;       /* bytes read from file per read */
     Message dataMsg;    /* used to send file data to client */
@@ -178,7 +172,8 @@ static void read_loop(void)
     do
     {
         /* read contents from the file & prepare message to send to client. */
-        nRead = read(fd, dataMsg.data.dataMsg.data, MAX_MSG_DATAMSGDATA_LEN);
+        nRead = read(fd, dataMsg.data.dataMsg.data,
+            MAX_MSG_DATAMSGDATA_LEN/priority);
         dataMsg.data.dataMsg.len = nRead;
 
         /* send the message to the client, and exit on error. */
@@ -243,33 +238,6 @@ static void terminate_program(bool clientPresent)
     /* release resources, and exit the program */
     close(fd);
     exit(0);
-}
-
-/**
- * sets the priority of this process. if it fails, the program exits.
- *
- * @function   set_process_priority
- *
- * @date       2015-02-11
- *
- * @revision   none
- *
- * @designer   EricTsang
- *
- * @programmer EricTsang
- *
- * @note       none
- *
- * @signature  static int set_process_priority(int priority)
- *
- * @param      priority new priority of the process. this is a number from 0, to
- *   20, where 0 means the process is more important.
- *
- * @return     -1 if the priority fails to be set; 0 otherwise.
- */
-static int set_process_priority(int priority)
-{
-    return setpriority(PRIO_PROCESS, getpid(), priority);
 }
 
 /**
