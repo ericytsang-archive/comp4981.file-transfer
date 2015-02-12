@@ -204,7 +204,7 @@ static bool parse_msgq_msg(Message* msg)
         returnVal = true;
         break;
     default:
-        fprinf(stderr, "unknown message type!")
+        fprintf(stderr, "unknown message type!\n");
         returnVal = false;
         break;
     }

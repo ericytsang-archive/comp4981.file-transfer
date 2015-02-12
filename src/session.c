@@ -79,11 +79,14 @@ int serve_client(pid_t clntPid, int priority, char* filePath)
     dataMsg.dataType = MSG_DATA_DATA;
     pidMsg.dataType  = MSG_DATA_PID;
 
+    /* set signal handler */
+    signal(SIGUSR1, sigusr1_handler);
+
     /* initialize static variables */
     clientPid = clntPid;
 
-    /* set signal handler */
-    signal(SIGUSR1, sigusr1_handler);
+    /* get the message queue. */
+    get_message_queue(&msgQId);
 
     /* verify priority */
     if(priority < MIN_PROC_PRIO || priority > MAX_PROC_PRIO)
@@ -99,9 +102,6 @@ int serve_client(pid_t clntPid, int priority, char* filePath)
         sprintf(fatalstring, "failed to set priority: %d\n", errno);
         fatal(fatalstring);
     }
-
-    /* get the message queue. */
-    get_message_queue(&msgQId);
 
     /* send the client the session's PID */
     pidMsg.data.pidMsg.pid = getpid();
@@ -220,7 +220,7 @@ static void fatal(char* str)
     stopMsg.dataType = MSG_DATA_STOPCLNT;
 
     /* send a print message as well as an stop message to the client */
-    sprintf(prntMsg.data.printMsg.str, "%s", str);
+    sprintf(prntMsg.data.printMsg.str, "fatal: %s", str);
     msg_send(msgQId, &prntMsg, clientPid);
     msg_send(msgQId, &stopMsg, clientPid);
 
